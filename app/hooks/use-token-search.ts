@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import type {DisplayToken} from "~/types/tokens";
 import {useDebouncedCallback} from "use-debounce";
 import {
@@ -24,6 +24,7 @@ type LoadingState = 'loadingList' | 'loadingPrices' | null;
 export const useTokenSearch = (): {
     query: string;
     setQuery: (givenQuery: string) => void;
+    reload: () => void;
     resultTokens: DisplayToken[];
     loadingState: LoadingState;
     errorMessage: string;
@@ -35,21 +36,32 @@ export const useTokenSearch = (): {
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [resultTokens, setResultTokens] = useState<DisplayToken[]>([]);
 
+    const abortController = useRef<AbortController>(null);
+
     const runDebouncedSearch = useDebouncedCallback((givenSearchString: string) => {
         setLoadingState('loadingList');
         setErrorMessage("");
 
-        getRelevantTokensBasedOnSearch(givenSearchString).then((tokens) => {
+        abortController.current?.abort();
+        abortController.current = new AbortController();
+
+        getRelevantTokensBasedOnSearch(givenSearchString, abortController.current?.signal).then((tokens) => {
             setResultTokens(tokens);
             setLoadingState('loadingPrices');
-            hydrateTokensPrices(tokens)
+            hydrateTokensPrices(tokens, abortController.current?.signal)
                 .then(setResultTokens)
                 .catch(error => {
+                    if (abortController.current?.signal.aborted) {
+                        return;
+                    }
                     setErrorMessage(error.message);
                     console.error(`Hydration error on page: ${error.message}`);
                 })
                 .finally(() => setLoadingState(null));
         }).catch(error => {
+            if (abortController.current?.signal.aborted) {
+                return;
+            }
             setErrorMessage(error.message);
             console.error(`Search error on page: ${error.message}`);
         }).finally(() => setLoadingState(null));
@@ -59,9 +71,15 @@ export const useTokenSearch = (): {
         setLoadingState('loadingList');
         setErrorMessage("");
 
-        getTopTokensByMarketCapRank()
+        abortController.current?.abort();
+        abortController.current = new AbortController();
+
+        getTopTokensByMarketCapRank(abortController.current?.signal)
             .then(setResultTokens)
             .catch(error => {
+                if (abortController.current?.signal.aborted) {
+                    return;
+                }
                 setErrorMessage(error.message);
                 console.error(`Top token search error on page: ${error.message}`);
             });
@@ -75,5 +93,13 @@ export const useTokenSearch = (): {
         }
     }, [debouncedQuery]);
 
-    return {query, setQuery, resultTokens, loadingState, errorMessage};
+    const reload = useCallback(() => {
+        if (debouncedQuery) {
+            runDebouncedSearch(debouncedQuery);
+        } else {
+            runDebouncedTopTokensLookup();
+        }
+    }, [debouncedQuery]);
+
+    return {query, setQuery, reload, resultTokens, loadingState, errorMessage};
 };
