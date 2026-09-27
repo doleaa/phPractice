@@ -16,7 +16,10 @@ export const useInView = <T extends Element>(options?: IntersectionObserverInit)
         const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), options);
         observer.observe(element);
 
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+            setInView(false);
+        };
     }, [options?.root, options?.rootMargin, options?.threshold]);
 
     return [ref, inView];
