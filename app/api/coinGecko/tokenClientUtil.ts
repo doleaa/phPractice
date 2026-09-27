@@ -58,35 +58,6 @@ export const getRelevantTokensBasedOnSearch = async (givenSearchString: string, 
     return [];
 };
 
-export const getTopTokensByMarketCapRank = async (abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
-    try {
-        const response = await fetch(
-            'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd',
-            abortSignal && {signal: abortSignal}
-        );
-
-        if (!response.ok) {
-            throw new Error(`Top Token search: ${getErrorMessageByStatus(response.status)}`);
-        }
-
-        const result = await response.json();
-        console.log(`Token Market Info call response: ${JSON.stringify(result)}`);
-
-        if (result.length > 0) {
-            return result
-                .sort((a: TokenDetails, b:TokenDetails) => a.market_cap_rank - b.market_cap_rank)
-                .slice(0, 20)
-                .map(toCompleteDisplayInfo);
-        }
-    } catch (error) {
-        // @ts-ignore
-        console.error(`Top Token Search call error: ${error.message}`);
-        throw error;
-    }
-
-    return [];
-};
-
 export const hydrateTokensPrices = async (givenTokens: DisplayToken[], abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
     console.log("Got to the hydration point.");
 
@@ -119,6 +90,60 @@ export const hydrateTokensPrices = async (givenTokens: DisplayToken[], abortSign
     } catch (error) {
         // @ts-ignore
         console.error(`Hydrate token prices call error: ${error.message}`);
+        throw error;
+    }
+
+    return [];
+};
+
+export const getTopTokensByMarketCapRank = async (abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
+    try {
+        const response = await fetch(
+            'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd',
+            abortSignal && {signal: abortSignal}
+        );
+
+        if (!response.ok) {
+            throw new Error(`Top Token search: ${getErrorMessageByStatus(response.status)}`);
+        }
+
+        const result = await response.json();
+        console.log(`Token Market Info call response: ${JSON.stringify(result)}`);
+
+        if (result.length > 0) {
+            return result
+                .sort((a: TokenDetails, b:TokenDetails) => a.market_cap_rank - b.market_cap_rank)
+                .slice(0, 20)
+                .map(toCompleteDisplayInfo);
+        }
+    } catch (error) {
+        // @ts-ignore
+        console.error(`Top Token Search call error: ${error.message}`);
+        throw error;
+    }
+
+    return [];
+};
+
+export const getPaginatedTopTokensByMarketCapRank = async (pageSize: number, page: number, abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
+    try {
+        const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=${pageSize}&page=${page}&&order=market_cap_rank`,
+            abortSignal && {signal: abortSignal}
+        );
+
+        if (!response.ok) {
+            throw new Error(`Top Token Paginated search error: ${getErrorMessageByStatus(response.status)}`);
+        }
+
+        const result = await response.json();
+
+        if (result.length > 0) {
+            return result.map(toCompleteDisplayInfo);
+        }
+    } catch (error) {
+        // @ts-ignore
+        console.error(`Top Token Paginated Search call error: ${error.message}`);
         throw error;
     }
 
