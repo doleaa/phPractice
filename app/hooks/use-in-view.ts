@@ -1,7 +1,6 @@
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useRef, useState} from "react";
 
 export const useInView = <T extends Element>(options?: IntersectionObserverInit) => {
-    // const ref = useRef<T>(null);
     const [inView, setInView] = useState(false);
     const observerRef = useRef<IntersectionObserver | null>(null);
 
