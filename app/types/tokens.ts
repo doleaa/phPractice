@@ -34,3 +34,7 @@ export interface TokenMarketInfo {
     price_change_percentage_24h: number;
 }
 
+export interface SimpleQuoteResponse {
+    [key: string]: { [fiatKey: string]: number};
+}
+

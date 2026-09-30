@@ -1,4 +1,4 @@
-import type {TokenDetails, TokenMarketInfo, DisplayToken} from "~/types/tokens";
+import type {TokenDetails, TokenMarketInfo, DisplayToken, SimpleQuoteResponse} from "~/types/tokens";
 
 const toDisplayInfo = (givenToken: TokenDetails): DisplayToken => ({
     id: givenToken.id,
@@ -125,10 +125,35 @@ export const getTopTokensByMarketCapRank = async (abortSignal?: AbortSignal): Pr
     return [];
 };
 
+export const getAllTokensSortedByMarketCapRank = async (abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
+    try {
+        const response = await fetch(
+            'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_rank',
+            abortSignal && {signal: abortSignal}
+        );
+
+        if (!response.ok) {
+            throw new Error(`All Tokens search error: ${getErrorMessageByStatus(response.status)}`);
+        }
+
+        const result = await response.json();
+
+        if (result.length > 0) {
+            return result.map(toCompleteDisplayInfo);
+        }
+    } catch (error) {
+        // @ts-ignore
+        console.error(`All Tokens Search call error: ${error.message}`);
+        throw error;
+    }
+
+    return [];
+};
+
 export const getPaginatedTopTokensByMarketCapRank = async (pageSize: number, page: number, abortSignal?: AbortSignal): Promise<DisplayToken[]> => {
     try {
         const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=${pageSize}&page=${page}&&order=market_cap_rank`,
+            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=${pageSize}&page=${page}&order=market_cap_rank`,
             abortSignal && {signal: abortSignal}
         );
 
@@ -148,4 +173,29 @@ export const getPaginatedTopTokensByMarketCapRank = async (pageSize: number, pag
     }
 
     return [];
+};
+
+export const getSimpleQuote = async (fromToken: string, toToken: string, abortSignal?: AbortSignal): Promise<number | null> => {
+    try {
+        const response = await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?ids=${fromToken},${toToken}&vs_currencies=usd`,
+            abortSignal && {signal: abortSignal}
+        );
+
+        if (!response.ok) {
+            throw new Error(`Simple Quote call error: ${getErrorMessageByStatus(response.status)}`);
+        }
+
+        const result: SimpleQuoteResponse = await response.json();
+
+        if (result[fromToken]?.usd && result[toToken]?.usd) {
+            return Number((result[fromToken]?.usd / result[toToken]?.usd).toFixed(4));
+        }
+    } catch (error) {
+        // @ts-ignore
+        console.error(`Simple quote call error: ${error.message}`);
+        throw error;
+    }
+
+    return null;
 };
