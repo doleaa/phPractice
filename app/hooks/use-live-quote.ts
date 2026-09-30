@@ -1,5 +1,5 @@
 import {useAllTokens} from "~/hooks/use-all-tokens";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {getSimpleQuote} from "~/api/coinGecko/tokenClientUtil";
 import {useDebouncedCallback} from "use-debounce";
 import type {DisplayToken} from "~/types/tokens";
@@ -29,8 +29,15 @@ export const useLiveQuote = (): {
 
     const [countDown, setCountDown] = useState<number | null>(null);
 
+    const latestRequestId = useRef(0);
+
     const fetchNewQuote = async (from: string, to: string, fromAmount: number) => {
+        const requestId = ++latestRequestId.current;
         const quote = await getSimpleQuote(from, to);
+
+        if (requestId !== latestRequestId.current) {
+            return;
+        }
 
         if (quote && fromAmount) {
             setToAmount(fromAmount * quote);
@@ -40,23 +47,23 @@ export const useLiveQuote = (): {
 
     useEffect(() => {
         if (countDown && countDown > 1) {
-            setTimeout(() => setCountDown(countDown - 1), 1000);
-        } else {
-            updateFromAmount();
+            const timeout = setTimeout(() => setCountDown(countDown - 1), 1000);
+            return () => clearTimeout(timeout);
         }
+        updateFromAmount();
     }, [countDown]);
 
     const updateFromAmount = useDebouncedCallback(() => {
         if (fromValue && toValue && fromAmount) {
             fetchNewQuote(fromValue, toValue, fromAmount);
         } else if (!fromAmount) {
+            latestRequestId.current++;
+            setCountDown(null);
             setToAmount(null);
         }
     }, 300);
 
-
-
-    useEffect(() => updateFromAmount, [fromValue, toValue, fromAmount]);
+    useEffect(updateFromAmount, [fromValue, toValue, fromAmount]);
 
     return {allTokens, loadingOptions, from: fromValue, to: toValue, setFrom, setTo, fromAmount, setFromAmount, toAmount, countDown};
 };
