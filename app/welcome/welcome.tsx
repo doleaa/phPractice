@@ -44,15 +44,6 @@ export function Welcome() {
               ))}
             </ul>
           </nav>
-          <p className="text-center">
-            <button
-              type="button"
-              onClick={() => navigate("/tokenSearch")}
-              className="leading-normal text-blue-700 hover:underline dark:text-blue-500"
-            >
-              Token Search
-            </button>
-          </p>
         </div>
       </div>
     </main>
